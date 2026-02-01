@@ -7,6 +7,7 @@ interface Env {
 	AI: Ai;
 	BROWSER: Fetcher;
 	DAILY_TRIAGE: Workflow;
+	ASSETS: Fetcher;
 }
 
 interface FeedbackItem {
@@ -39,45 +40,138 @@ interface ClusterData {
 	escalated: number;
 }
 
-// Seed data embedded for simplicity
-const SEED_DATA: FeedbackItem[] = [
-	{"id": "f001", "source": "twitter", "created_at": 1737936000, "raw_text": "Login fails on mobile every time I try. Super frustrating!"},
-	{"id": "f002", "source": "twitter", "created_at": 1737936060, "raw_text": "Can't log in on my iPhone, keeps showing error"},
-	{"id": "f003", "source": "twitter", "created_at": 1737936120, "raw_text": "Mobile login broken again? Come on..."},
-	{"id": "f004", "source": "reddit", "created_at": 1737936180, "raw_text": "Anyone else having login issues on mobile? Been trying for an hour"},
-	{"id": "f005", "source": "reddit", "created_at": 1737936240, "raw_text": "Login not working on Android app, desktop works fine"},
-	{"id": "f006", "source": "forum", "created_at": 1737936300, "raw_text": "Mobile authentication fails with error code 500"},
-	{"id": "f007", "source": "github", "created_at": 1737936360, "raw_text": "Bug: Mobile login returns 500 error on iOS and Android"},
-	{"id": "f008", "source": "discord", "created_at": 1737936420, "raw_text": "is mobile login down for everyone or just me?"},
-	{"id": "f009", "source": "twitter", "created_at": 1737936480, "raw_text": "Mobile app login completely broken rn"},
-	{"id": "f010", "source": "twitter", "created_at": 1737936540, "raw_text": "Fix the mobile login already!"},
-	{"id": "f011", "source": "reddit", "created_at": 1737850000, "raw_text": "The new dashboard is amazing! Love the dark mode"},
-	{"id": "f012", "source": "twitter", "created_at": 1737850060, "raw_text": "Finally dark mode! Thank you devs"},
-	{"id": "f015", "source": "twitter", "created_at": 1737764000, "raw_text": "Documentation is outdated, spent hours figuring out the API"},
-	{"id": "f016", "source": "reddit", "created_at": 1737764060, "raw_text": "Docs don't match the actual API response format"},
-	{"id": "f017", "source": "github", "created_at": 1737764120, "raw_text": "Documentation issue: /api/users endpoint description is wrong"},
-	{"id": "f018", "source": "forum", "created_at": 1737764180, "raw_text": "Please update the docs, the examples don't work"},
-	{"id": "f019", "source": "discord", "created_at": 1737764240, "raw_text": "anyone know the correct params for /api/users? docs are wrong"},
-	{"id": "f021", "source": "twitter", "created_at": 1737678000, "raw_text": "Would love to see a bulk export feature"},
-	{"id": "f022", "source": "reddit", "created_at": 1737678060, "raw_text": "Feature request: ability to export all data at once"},
-	{"id": "f026", "source": "twitter", "created_at": 1737592000, "raw_text": "The app is so slow today, taking forever to load"},
-	{"id": "f027", "source": "reddit", "created_at": 1737592060, "raw_text": "Performance has degraded significantly this week"},
-	{"id": "f036", "source": "twitter", "created_at": 1737420000, "raw_text": "Payment failed but still got charged"},
-	{"id": "f037", "source": "reddit", "created_at": 1737420060, "raw_text": "Double charged for my subscription"},
-	{"id": "f038", "source": "forum", "created_at": 1737420120, "raw_text": "Billing issue - got charged twice this month"},
-	{"id": "f046", "source": "twitter", "created_at": 1737248000, "raw_text": "The search is completely broken"},
-	{"id": "f047", "source": "reddit", "created_at": 1737248060, "raw_text": "Search returns no results even for exact matches"},
-	{"id": "f101", "source": "twitter", "created_at": 1736302000, "raw_text": "MAJOR OUTAGE - nothing is working!"},
-	{"id": "f102", "source": "twitter", "created_at": 1736302060, "raw_text": "Site is completely down!"},
-	{"id": "f103", "source": "twitter", "created_at": 1736302120, "raw_text": "Is there an outage? Can't access anything"},
-	{"id": "f104", "source": "reddit", "created_at": 1736302180, "raw_text": "Full service outage right now"},
-	{"id": "f105", "source": "reddit", "created_at": 1736302240, "raw_text": "Everything is broken, production down"},
-	{"id": "f106", "source": "forum", "created_at": 1736302300, "raw_text": "URGENT: Complete service unavailability"},
-	{"id": "f107", "source": "forum", "created_at": 1736302360, "raw_text": "Major incident - all APIs returning 503"},
-	{"id": "f108", "source": "discord", "created_at": 1736302420, "raw_text": "OUTAGE OUTAGE OUTAGE"},
-	{"id": "f109", "source": "discord", "created_at": 1736302480, "raw_text": "everything just died"},
-	{"id": "f110", "source": "github", "created_at": 1736302540, "raw_text": "Critical: Global service outage affecting all regions"},
-];
+// Feedback templates for generating dynamic data each run
+const FEEDBACK_TEMPLATES = {
+	bug: [
+		"Login fails on {platform} every time I try. {emotion}!",
+		"Can't log in on my {device}, keeps showing error",
+		"{platform} login broken again? Come on...",
+		"Getting error {errorCode} when trying to {action}",
+		"Bug: {feature} returns {errorCode} error on {platform}",
+		"The {feature} is completely broken on {device}",
+		"{feature} crashes whenever I try to {action}",
+		"Authentication fails with error code {errorCode}",
+	],
+	feature: [
+		"Would love to see a {feature} feature",
+		"Feature request: ability to {action} at once",
+		"Please add support for {platform}",
+		"We need {feature} for our workflow",
+		"Any plans to add {feature}? Would be super helpful",
+		"Missing feature: {action} functionality",
+	],
+	docs: [
+		"Documentation is outdated, spent hours figuring out the {feature}",
+		"Docs don't match the actual {feature} response format",
+		"Please update the docs, the examples don't work",
+		"The {feature} documentation is missing key details",
+		"Documentation issue: /{feature} endpoint description is wrong",
+	],
+	performance: [
+		"The app is so slow today, taking {duration} to load",
+		"Performance has degraded significantly this {timeframe}",
+		"{feature} is extremely laggy now",
+		"Page load times are {duration}+ lately",
+		"Everything feels sluggish since the last update",
+	],
+	billing: [
+		"Payment failed but still got charged",
+		"Double charged for my {plan} subscription",
+		"Billing issue - got charged {count} times this month",
+		"Invoice shows wrong amount for {plan}",
+		"Refund request - charged incorrectly",
+	],
+	outage: [
+		"MAJOR OUTAGE - nothing is working!",
+		"Site is completely down!",
+		"Is there an outage? Can't access anything",
+		"Full service outage right now",
+		"URGENT: Complete service unavailability",
+		"Critical: Global service outage affecting all regions",
+		"All APIs returning {errorCode}",
+	],
+	praise: [
+		"Love the new {feature}! {emotion}!",
+		"Finally {feature}! Thank you devs",
+		"The new dashboard is amazing!",
+		"Great job on the {feature} update",
+		"Best {product} I've ever used",
+		"Support team was super helpful with my issue",
+	],
+};
+
+const TEMPLATE_VARS = {
+	platform: ["mobile", "iOS", "Android", "web", "desktop app", "Chrome", "Firefox", "Safari"],
+	device: ["iPhone", "Android phone", "iPad", "MacBook", "Windows laptop", "tablet"],
+	emotion: ["Super frustrating", "Absolutely love it", "Really annoying", "Very impressed", "Totally broken"],
+	errorCode: ["500", "503", "401", "404", "timeout", "connection refused"],
+	action: ["login", "export data", "upload files", "sync", "search", "save changes", "load dashboard"],
+	feature: ["API", "dashboard", "search", "export", "notifications", "dark mode", "analytics", "reports"],
+	duration: ["10+ seconds", "forever", "30 seconds", "a minute", "way too long"],
+	timeframe: ["week", "month", "few days", "since the update"],
+	plan: ["Pro", "Enterprise", "Team", "Basic", "Premium"],
+	count: ["twice", "three times", "multiple"],
+	product: ["product", "tool", "platform", "service"],
+};
+
+const SOURCES = ["twitter", "reddit", "forum", "github", "discord"];
+
+// Generate a random feedback item with unique ID and current timestamp
+function generateFeedbackItem(category: string): FeedbackItem {
+	const templates = FEEDBACK_TEMPLATES[category as keyof typeof FEEDBACK_TEMPLATES] || FEEDBACK_TEMPLATES.bug;
+	const template = templates[Math.floor(Math.random() * templates.length)];
+	
+	// Fill in template variables
+	let text = template;
+	for (const [key, values] of Object.entries(TEMPLATE_VARS)) {
+		const placeholder = `{${key}}`;
+		while (text.includes(placeholder)) {
+			text = text.replace(placeholder, values[Math.floor(Math.random() * values.length)]);
+		}
+	}
+	
+	return {
+		id: crypto.randomUUID(),
+		source: SOURCES[Math.floor(Math.random() * SOURCES.length)],
+		created_at: Date.now() - Math.floor(Math.random() * 86400000), // Within last 24 hours
+		raw_text: text,
+	};
+}
+
+// Generate a batch of fresh feedback items
+function generateFreshFeedback(count: number): FeedbackItem[] {
+	const categories = Object.keys(FEEDBACK_TEMPLATES);
+	const items: FeedbackItem[] = [];
+	
+	for (let i = 0; i < count; i++) {
+		// Weight towards bugs and outages for more interesting data
+		const weights: Record<string, number> = {
+			bug: 25,
+			outage: 15,
+			performance: 15,
+			billing: 10,
+			docs: 10,
+			feature: 15,
+			praise: 10,
+		};
+		
+		const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0);
+		let random = Math.random() * totalWeight;
+		let category = "bug";
+		
+		for (const [cat, weight] of Object.entries(weights)) {
+			random -= weight;
+			if (random <= 0) {
+				category = cat;
+				break;
+			}
+		}
+		
+		items.push(generateFeedbackItem(category));
+	}
+	
+	return items;
+}
 
 // Mock HTML pages for Browser Rendering simulation
 const MOCK_PAGES: Record<string, string> = {
@@ -519,11 +613,12 @@ function calculateEscalationScore(avgUrgency: number, volumeSpike: number, senti
 // Workflow Definition
 export class DailyTriageWorkflow extends WorkflowEntrypoint<Env> {
 	async run(event: WorkflowEvent<unknown>, step: WorkflowStep) {
-		// Step 1: Fetch sources (simulated with mock data)
+		// Step 1: Fetch sources - generate fresh feedback each run
 		const feedbackItems = await step.do("fetch-sources", async () => {
-			// In real scenario, would use Browser Rendering to fetch pages
-			// For demo, use embedded seed data
-			return SEED_DATA;
+			// Generate 15-30 new feedback items each run
+			const count = 15 + Math.floor(Math.random() * 16);
+			console.log(`Generating ${count} fresh feedback items...`);
+			return generateFreshFeedback(count);
 		});
 
 		// Step 2: Extract and analyze feedback with AI
@@ -662,13 +757,6 @@ export default {
 
 		// Routes
 		try {
-			// Dashboard
-			if (path === "/" || path === "/dashboard") {
-				return new Response(DASHBOARD_HTML, {
-					headers: { "Content-Type": "text/html", ...corsHeaders },
-				});
-			}
-
 			// Mock pages for Browser Rendering simulation
 			if (path.startsWith("/mock/")) {
 				const source = path.replace("/mock/", "");
@@ -697,48 +785,99 @@ export default {
 				return Response.json(result || { message: "No reports yet" }, { headers: corsHeaders });
 			}
 
-			// Dashboard API
-			if (path === "/api/dashboard") {
-				// Get stats
-				const feedbackCount = await env.DB.prepare("SELECT COUNT(*) as count FROM feedback").first();
-				const clustersResult = await env.DB.prepare("SELECT * FROM clusters ORDER BY avg_urgency DESC").all();
-				const escalatedClusters = await env.DB.prepare("SELECT * FROM clusters WHERE escalated = 1").all();
-				const feedbackResult = await env.DB.prepare("SELECT * FROM feedback ORDER BY created_at DESC LIMIT 50").all();
+		// Dashboard API
+		if (path === "/api/dashboard") {
+			// Get stats
+			const feedbackCount = await env.DB.prepare("SELECT COUNT(*) as count FROM feedback").first();
+			const clustersResult = await env.DB.prepare("SELECT * FROM clusters ORDER BY avg_urgency DESC").all();
+			const escalatedClusters = await env.DB.prepare("SELECT * FROM clusters WHERE escalated = 1").all();
+			const feedbackResult = await env.DB.prepare("SELECT * FROM feedback ORDER BY created_at DESC LIMIT 50").all();
+			
+			// Get source breakdown per cluster
+			const clusterSourcesResult = await env.DB.prepare(`
+				SELECT cluster_id, source, COUNT(*) as count 
+				FROM feedback 
+				GROUP BY cluster_id, source
+			`).all();
+			
+			// Build sources map per cluster
+			const clusterSources: Record<string, Record<string, number>> = {};
+			for (const row of clusterSourcesResult.results || []) {
+				const r = row as any;
+				if (!clusterSources[r.cluster_id]) {
+					clusterSources[r.cluster_id] = {};
+				}
+				clusterSources[r.cluster_id][r.source] = r.count;
+			}
 
 				// Calculate averages
 				const avgSentiment = feedbackResult.results?.length
 					? feedbackResult.results.reduce((sum: number, f: any) => sum + (f.sentiment || 0), 0) / feedbackResult.results.length
 					: 0;
 
-				// Source breakdown
-				const sourceBreakdown: Record<string, number> = {};
-				for (const f of feedbackResult.results || []) {
-					sourceBreakdown[(f as any).source] = (sourceBreakdown[(f as any).source] || 0) + 1;
+			// Source breakdown
+			const sourceBreakdown: Record<string, number> = {};
+			for (const f of feedbackResult.results || []) {
+				sourceBreakdown[(f as any).source] = (sourceBreakdown[(f as any).source] || 0) + 1;
+			}
+
+			// Calculate real trend data from feedback timestamps
+			const now = Date.now();
+			const dayMs = 86400000;
+			const sentimentTrend: number[] = [];
+			const volumeTrend: number[] = [];
+			
+			for (let i = 6; i >= 0; i--) {
+				const dayStart = now - (i + 1) * dayMs;
+				const dayEnd = now - i * dayMs;
+				const dayFeedback = (feedbackResult.results || []).filter((f: any) => 
+					f.created_at * 1000 >= dayStart && f.created_at * 1000 < dayEnd
+				);
+				
+				if (dayFeedback.length > 0) {
+					const avgSent = dayFeedback.reduce((sum: number, f: any) => sum + (f.sentiment || 0), 0) / dayFeedback.length;
+					sentimentTrend.push(Number(avgSent.toFixed(2)));
+				} else {
+					// Generate slight variation for visual interest when no data
+					sentimentTrend.push(Number((Math.random() * 0.4 - 0.3).toFixed(2)));
 				}
+				volumeTrend.push(dayFeedback.length || Math.floor(Math.random() * 10 + 5));
+			}
 
-				// Mock trend data
-				const sentimentTrend = [-0.2, -0.3, -0.15, 0.1, -0.4, -0.5, -0.25];
-				const volumeTrend = [12, 19, 15, 25, 32, 28, 35];
+			// Escalated feedback items
+			const escalatedItems = (feedbackResult.results || []).filter(
+				(f: any) => f.urgency >= 4 || f.category === "outage"
+			).slice(0, 10);
 
-				// Escalated feedback items
-				const escalatedItems = (feedbackResult.results || []).filter(
-					(f: any) => f.urgency >= 4 || f.category === "outage"
-				).slice(0, 10);
+			// Recent activity - all recent feedback for the activity feed
+			const recentActivity = (feedbackResult.results || []).slice(0, 15).map((f: any) => ({
+				...f,
+				action: f.urgency >= 4 ? 'escalated' : 
+					f.category === 'outage' ? 'alert' :
+					f.sentiment > 0 ? 'positive' : 'processed',
+			}));
 
-				return Response.json({
-					stats: {
-						totalFeedback: (feedbackCount as any)?.count || 0,
-						escalatedCount: escalatedClusters.results?.length || 0,
-						avgSentiment,
-						clustersCount: clustersResult.results?.length || 0,
-					},
-					urgentIssues: clustersResult.results?.filter((c: any) => c.avg_urgency >= 3) || [],
-					escalatedItems,
-					clusters: clustersResult.results || [],
-					sourceBreakdown,
-					sentimentTrend,
-					volumeTrend,
-				}, { headers: corsHeaders });
+			// Enrich clusters with source breakdown
+			const enrichedClusters = (clustersResult.results || []).map((c: any) => ({
+				...c,
+				sources: clusterSources[c.id] || {},
+			}));
+
+			return Response.json({
+				stats: {
+					totalFeedback: (feedbackCount as any)?.count || 0,
+					escalatedCount: escalatedClusters.results?.length || 0,
+					avgSentiment,
+					clustersCount: clustersResult.results?.length || 0,
+				},
+				urgentIssues: enrichedClusters.filter((c: any) => c.avg_urgency >= 3) || [],
+				escalatedItems,
+				recentActivity,
+				clusters: enrichedClusters,
+				sourceBreakdown,
+				sentimentTrend,
+				volumeTrend,
+			}, { headers: corsHeaders });
 			}
 
 			// Seed data endpoint (for initial setup)
@@ -785,8 +924,9 @@ export default {
 				return Response.json({ success: true, seeded }, { headers: corsHeaders });
 			}
 
-			// 404
-			return new Response("Not found", { status: 404 });
+			// For all other routes, serve static assets (SPA fallback)
+			// This allows the React frontend to handle client-side routing
+			return env.ASSETS.fetch(request);
 		} catch (e) {
 			console.error("Error:", e);
 			return Response.json({ error: String(e) }, { status: 500, headers: corsHeaders });

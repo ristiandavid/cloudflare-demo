@@ -18,6 +18,8 @@ A proactive feedback intelligence system built on Cloudflare Workers that automa
 - **Workers AI**: LLM-powered feedback analysis
 - **Browser Rendering**: (Simulated) proactive web scraping
 - **Workflows**: Durable execution for daily triage pipeline
+- **React + Vite**: Frontend dashboard with Tailwind CSS
+- **Recharts**: Data visualization for charts
 
 ## Routes
 
@@ -37,8 +39,11 @@ A proactive feedback intelligence system built on Cloudflare Workers that automa
 ## Quick Start
 
 ```bash
-# Install dependencies
+# Install backend dependencies
 npm install
+
+# Install frontend dependencies
+cd frontend && npm install && cd ..
 
 # Create the D1 database (already done)
 npx wrangler d1 create pulse-db
@@ -46,8 +51,11 @@ npx wrangler d1 create pulse-db
 # Apply the schema
 npx wrangler d1 execute pulse-db --local --file=schema.sql
 
+# Build the frontend
+cd frontend && npm run build && cd ..
+
 # Start development server
-npm run dev
+npm run dev -- --port 8787
 
 # Seed the database
 curl -X POST http://localhost:8787/seed
@@ -56,15 +64,37 @@ curl -X POST http://localhost:8787/seed
 open http://localhost:8787
 ```
 
+### Frontend Development
+
+```bash
+# Terminal 1: Start backend
+npm run dev -- --port 8787
+
+# Terminal 2: Start frontend with hot-reload
+cd frontend && npm run dev
+
+# Open http://localhost:5173 (frontend dev server with API proxy)
+```
+
 ## Deployment
 
 ```bash
+# Build frontend first
+cd frontend && npm run build && cd ..
+
 # Apply schema to remote database
 npx wrangler d1 execute pulse-db --remote --file=schema.sql
 
 # Deploy to Cloudflare
 npm run deploy
+
+# Seed production database
+curl -X POST https://pulse.ristiandavid.workers.dev/seed
 ```
+
+## Live Demo
+
+https://pulse.ristiandavid.workers.dev
 
 ## Data Model
 
