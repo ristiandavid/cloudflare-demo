@@ -1,219 +1,280 @@
 # Pulse - Feedback Intelligence System
 
-A proactive feedback intelligence system built on Cloudflare Workers that automatically discovers, analyzes, and clusters product feedback from multiple sources.
+Pulse is an automated feedback intelligence system that discovers, analyzes, clusters, and escalates product feedback from multiple sources. Built entirely on the Cloudflare developer platform, it demonstrates how to build a full-stack AI-powered application with zero traditional infrastructure.
 
-## Features
+**Live Demo**: [https://pulse.ristiandavid.workers.dev](https://pulse.ristiandavid.workers.dev)
 
-- **Automated Daily Workflow**: Runs at 8am London time via cron trigger
-- **Multi-Source Ingestion**: Simulates fetching from Twitter, Reddit, Forums, GitHub, and Discord
-- **AI-Powered Analysis**: Uses Workers AI (Llama 3.1) for sentiment, urgency, and category classification
-- **Intelligent Clustering**: Groups similar feedback items by category
-- **Escalation Detection**: Automatically flags critical issues based on deterministic scoring
-- **Real-time Dashboard**: Single-page dashboard with charts and data visualization
+---
 
-## Tech Stack
+## What It Does
 
-- **Cloudflare Workers**: Hosting and API
-- **Cloudflare D1**: SQLite database for persistence
-- **Workers AI**: LLM-powered feedback analysis
-- **Browser Rendering**: (Simulated) proactive web scraping
-- **Workflows**: Durable execution for daily triage pipeline
-- **React + Vite**: Frontend dashboard with Tailwind CSS
-- **Recharts**: Data visualization for charts
+Pulse automatically processes product feedback and surfaces actionable insights:
 
-## Routes
+1. **Collects Feedback** - Gathers feedback from multiple sources (Twitter, Reddit, Discord, GitHub, Forums)
+2. **AI Analysis** - Uses Workers AI to analyze sentiment, urgency (1-5), and category for each piece of feedback
+3. **Smart Clustering** - Groups related feedback into clusters (bugs, outages, feature requests, etc.)
+4. **Trend Detection** - Calculates volume spikes, sentiment drops, and urgency trends
+5. **Automatic Escalation** - Flags critical issues when the escalation score exceeds threshold
+6. **Daily Reports** - Generates comprehensive reports with actionable summaries
 
-| Route | Method | Description |
-|-------|--------|-------------|
-| `/` | GET | Dashboard UI |
-| `/run` | POST | Manually trigger the workflow |
-| `/report` | GET | Get the latest generated report |
-| `/api/dashboard` | GET | Dashboard data API |
-| `/seed` | POST | Seed the database with initial data |
-| `/mock/twitter` | GET | Mock Twitter HTML page |
-| `/mock/reddit` | GET | Mock Reddit HTML page |
-| `/mock/forum` | GET | Mock Forum HTML page |
-| `/mock/github` | GET | Mock GitHub HTML page |
-| `/mock/discord` | GET | Mock Discord HTML page |
+### Dashboard Features
 
-## Quick Start
+- **Today's Priorities** - Top urgent clusters with source breakdown, urgency scores, and quick actions
+- **System Health** - KPI tiles showing net sentiment, volume, average urgency, and high-risk count
+- **Feedback Themes** - Sortable table of all clusters with expandable details
+- **Sources & Drivers** - Visual breakdown of feedback sources and sentiment trends
+- **Activity Feed** - Real-time log of processed feedback with status labels
+- **Workflow Stepper** - Visual progress indicator when running the pipeline
 
-```bash
-# Install backend dependencies
-npm install
+---
 
-# Install frontend dependencies
-cd frontend && npm install && cd ..
+## Cloudflare Products Used
 
-# Create the D1 database (already done)
-npx wrangler d1 create pulse-db
+| Product | Purpose |
+|---------|---------|
+| **Workers** | Backend API, request handling, and serving the React frontend |
+| **D1** | Serverless SQLite database for storing feedback, clusters, and reports |
+| **Workers AI** | LLM inference (Llama 3.1 8B) for sentiment analysis and categorization |
+| **Workflows** | Durable execution for the multi-step daily triage pipeline |
+| **Cron Triggers** | Scheduled daily runs at 8:00 AM UTC |
+| **Static Assets** | Serving the React frontend via Cloudflare's CDN |
 
-# Apply the schema
-npx wrangler d1 execute pulse-db --local --file=schema.sql
+---
 
-# Build the frontend
-cd frontend && npm run build && cd ..
+## How It Works
 
-# Start development server
-npm run dev -- --port 8787
-
-# Seed the database
-curl -X POST http://localhost:8787/seed
-
-# Open dashboard
-open http://localhost:8787
-```
-
-### Frontend Development
-
-```bash
-# Terminal 1: Start backend
-npm run dev -- --port 8787
-
-# Terminal 2: Start frontend with hot-reload
-cd frontend && npm run dev
-
-# Open http://localhost:5173 (frontend dev server with API proxy)
-```
-
-## Deployment
-
-```bash
-# Build frontend first
-cd frontend && npm run build && cd ..
-
-# Apply schema to remote database
-npx wrangler d1 execute pulse-db --remote --file=schema.sql
-
-# Deploy to Cloudflare
-npm run deploy
-
-# Seed production database
-curl -X POST https://pulse.ristiandavid.workers.dev/seed
-```
-
-## Live Demo
-
-https://pulse.ristiandavid.workers.dev
-
-## Data Model
-
-### feedback
-- `id`: TEXT PRIMARY KEY
-- `source`: TEXT (twitter, reddit, forum, github, discord)
-- `created_at`: INTEGER (timestamp)
-- `raw_text`: TEXT
-- `sentiment`: REAL (-1 to 1)
-- `urgency`: INTEGER (1-5)
-- `category`: TEXT (bug, feature, docs, performance, billing, outage, praise, other)
-- `cluster_id`: TEXT
-
-### clusters
-- `id`: TEXT PRIMARY KEY
-- `summary`: TEXT
-- `category`: TEXT
-- `avg_sentiment`: REAL
-- `avg_urgency`: REAL
-- `count_today`: INTEGER
-- `count_7d`: INTEGER
-- `trend_score`: REAL
-- `escalated`: INTEGER (0 or 1)
-
-### reports
-- `id`: TEXT PRIMARY KEY
-- `created_at`: INTEGER
-- `summary`: TEXT
-- `json`: TEXT
-
-## Escalation Logic
+### Architecture
 
 ```
-score = 0.5 * avg_urgency + 0.3 * volume_spike + 0.2 * sentiment_drop
-If score > 3.5 → escalated = true
+┌─────────────────────────────────────────────────────────────────┐
+│                      Cloudflare Edge                            │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   ┌─────────────┐     ┌─────────────┐     ┌─────────────┐      │
+│   │   Workers   │────▶│  Workers AI │     │     D1      │      │
+│   │  (API/UI)   │     │ (Llama 3.1) │     │  (SQLite)   │      │
+│   └──────┬──────┘     └─────────────┘     └──────▲──────┘      │
+│          │                                        │             │
+│          │            ┌─────────────┐            │             │
+│          └───────────▶│  Workflows  │────────────┘             │
+│                       │(Daily Triage)│                          │
+│                       └─────────────┘                          │
+│                              ▲                                  │
+│                              │                                  │
+│                       ┌─────────────┐                          │
+│                       │Cron Trigger │                          │
+│                       │ (8am UTC)   │                          │
+│                       └─────────────┘                          │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### The Daily Triage Workflow
+
+The workflow runs automatically every day at 8:00 AM UTC (or manually via the dashboard):
+
+```
+Step 1: Fetch Sources
+    └── Generates 15-30 simulated feedback items from various platforms
+
+Step 2: Analyze Feedback
+    └── Workers AI processes each item:
+        • Sentiment score (-1 to 1)
+        • Urgency level (1-5)
+        • Category (bug, outage, performance, billing, docs, feature, praise)
+        • Short summary
+
+Step 3: Store Feedback
+    └── Saves analyzed items to D1 database with unique IDs
+
+Step 4: Update Clusters
+    └── Groups feedback by category, calculates:
+        • Average sentiment per cluster
+        • Average urgency per cluster
+        • Volume trends
+        • Escalation scores
+
+Step 5: Generate Report
+    └── Creates daily summary with cluster stats and escalations
+```
+
+### Escalation Logic
+
+Issues are automatically flagged for escalation based on this formula:
+
+```
+score = 0.5 × avg_urgency + 0.3 × volume_spike + 0.2 × sentiment_drop
+```
+
+If `score > 3.5`, the cluster is marked as escalated.
+
+### Database Schema
+
+```sql
+-- Feedback items from all sources
+CREATE TABLE feedback (
+    id TEXT PRIMARY KEY,
+    source TEXT NOT NULL,        -- twitter, reddit, discord, github, forum
+    created_at INTEGER NOT NULL,
+    raw_text TEXT NOT NULL,
+    sentiment REAL,              -- -1 to 1
+    urgency INTEGER,             -- 1-5
+    category TEXT,
+    cluster_id TEXT
+);
+
+-- Grouped clusters of related feedback
+CREATE TABLE clusters (
+    id TEXT PRIMARY KEY,
+    summary TEXT,
+    category TEXT,
+    avg_sentiment REAL,
+    avg_urgency REAL,
+    count_today INTEGER,
+    count_7d INTEGER,
+    trend_score REAL,
+    escalated INTEGER           -- 0 or 1
+);
+
+-- Daily generated reports
+CREATE TABLE reports (
+    id TEXT PRIMARY KEY,
+    created_at INTEGER NOT NULL,
+    summary TEXT,
+    json TEXT
+);
 ```
 
 ---
 
-# Cloudflare Friction Log
+## API Endpoints
 
-## What Was Confusing
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/` | GET | Serves the React dashboard |
+| `/api/dashboard` | GET | Returns all dashboard data (stats, clusters, trends) |
+| `/run` | POST | Manually triggers the daily triage workflow |
+| `/report` | GET | Returns the latest generated report |
+| `/seed` | POST | Seeds the database with initial data |
+| `/mock/:source` | GET | Returns mock HTML for browser rendering simulation |
 
-### 1. Workflow Export Pattern
-**Issue**: The documentation wasn't immediately clear that the Workflow class needs to be exported from the main entry point file and that the `class_name` in wrangler config must exactly match the exported class name.
+---
 
-**Solution**: After trial and error, confirmed that `export class DailyTriageWorkflow extends WorkflowEntrypoint<Env>` must be exported from `src/index.ts` and referenced as `"class_name": "DailyTriageWorkflow"` in wrangler.jsonc.
+## Tech Stack
 
-### 2. Browser Rendering Local Development
-**Issue**: Browser Rendering requires `remote: true` for local development since there's no local simulation. This wasn't obvious at first.
+**Backend:**
+- Cloudflare Workers (TypeScript)
+- Cloudflare D1 (SQLite)
+- Cloudflare Workers AI (Llama 3.1 8B Instruct)
+- Cloudflare Workflows
 
-**Note**: For this prototype, Browser Rendering is simulated with mock HTML routes rather than actual browser rendering to avoid complexity.
+**Frontend:**
+- React 18
+- TypeScript
+- Vite
+- Tailwind CSS
+- Recharts (data visualization)
+- Iconify (icons)
 
-### 3. D1 Binding Auto-Creation
-**Issue**: When running `wrangler d1 create`, it prompts to auto-add the binding to wrangler config, but in non-interactive mode defaults to "no". Had to manually add the binding configuration.
+---
 
-**Suggestion**: Documentation could clarify the non-interactive behavior better.
+## Local Development
 
-### 4. Workers AI Model Selection
-**Issue**: Finding the right model for JSON extraction wasn't straightforward. The models page lists many options but doesn't clearly indicate which are best for structured output extraction.
+### Prerequisites
 
-**What worked**: `@cf/meta/llama-3.1-8b-instruct` works well but occasionally returns malformed JSON. Added fallback heuristic analysis.
+- Node.js 18+
+- Cloudflare account with Workers, D1, and AI access
+- Wrangler CLI
 
-## Missing Documentation
+### Setup
 
-### 1. Workflow + Scheduled Triggers
-The documentation doesn't clearly show how to combine Workflows with cron/scheduled triggers. Had to piece together information from multiple pages.
+```bash
+# Install dependencies
+npm install
+cd frontend && npm install && cd ..
 
-### 2. TypeScript Types for Workflows
-The `WorkflowEvent` and `WorkflowStep` type imports from `cloudflare:workers` aren't well documented. Found them through trial and error.
+# Create D1 database
+npx wrangler d1 create pulse-db
 
-### 3. D1 Batch Operations
-Documentation focuses on individual queries. Would be helpful to have examples of batch inserts or transactions for bulk operations.
+# Apply schema
+npx wrangler d1 execute pulse-db --local --file=schema.sql
 
-## Slow Parts
+# Start backend (terminal 1)
+npm run dev
 
-### 1. Workers AI Cold Start
-First AI inference request takes noticeably longer (cold start). Subsequent requests are faster.
+# Start frontend (terminal 2)
+cd frontend && npm run dev
+```
 
-### 2. Type Generation
-`npx wrangler types` is fast, but having to remember to run it after config changes is easy to forget.
+### Development URLs
 
-## DX Issues
+- Frontend: http://localhost:5173
+- Backend: http://localhost:8787
 
-### 1. Error Messages
-When a Workflow class isn't properly exported, the error message isn't very helpful. Says "class not found" without suggesting to check the export.
+---
 
-### 2. Local Workflow Testing
-Testing workflows locally requires triggering via HTTP, but the workflow binding works differently than in production. The `/run` endpoint had to be manually created.
+## Deployment
 
-### 3. Wrangler Config Format
-Using `wrangler.jsonc` (JSON with comments) is nice, but some examples in docs use `wrangler.toml`. Having to translate between formats adds friction.
+```bash
+# Build frontend
+cd frontend && npm run build && cd ..
 
-## Suggestions
+# Deploy to Cloudflare
+npm run deploy
+```
 
-1. **Unified Config Examples**: Show both JSONC and TOML side-by-side in all documentation
-2. **Workflow Starter Template**: A template that includes a basic workflow with scheduled trigger would accelerate onboarding
-3. **AI Model Guide**: A guide specifically for "JSON extraction" use cases with recommended models and prompting strategies
-4. **Local Dev Improvements**: Better simulation of Browser Rendering locally, even if it's just returning mock content
-5. **Type Generation Automation**: Auto-run `wrangler types` on config changes in dev mode
+The deploy command:
+1. Builds the React frontend to `/public`
+2. Deploys the Worker with all bindings
+3. Sets up the cron trigger
+4. Configures static asset serving
 
-## What Worked Well
+---
 
-1. **D1 SQL Interface**: Familiar SQLite syntax, easy to use
-2. **Workers AI Binding**: Simple `env.AI.run()` API is intuitive
-3. **Workflow Durability**: Step-based execution with automatic retry is powerful
-4. **Wrangler CLI**: Overall excellent DX for deployment and local development
-5. **Dashboard + Workers**: Serving HTML directly from Workers is simple and effective
-6. **Observability**: Built-in logging and the observability flag are helpful
+## Configuration
 
-## Time Spent
+All configuration is in `wrangler.jsonc`:
 
-- Initial setup and Hello World: 5 min
-- D1 schema and configuration: 10 min
-- Mock routes and data: 10 min
-- Workers AI integration: 20 min (mostly prompt engineering)
-- Workflow implementation: 25 min
-- Dashboard HTML/JS: 30 min
-- Debugging and testing: 15 min
-- Documentation and README: 10 min
+```jsonc
+{
+    "name": "pulse",
+    "main": "src/index.ts",
+    "compatibility_date": "2026-01-28",
+    "compatibility_flags": ["nodejs_compat"],
+    
+    // Serve React frontend
+    "assets": {
+        "directory": "./public",
+        "binding": "ASSETS",
+        "not_found_handling": "single-page-application"
+    },
+    
+    // D1 Database
+    "d1_databases": [{
+        "binding": "DB",
+        "database_name": "pulse-db",
+        "database_id": "your-database-id"
+    }],
+    
+    // Workers AI
+    "ai": { "binding": "AI" },
+    
+    // Workflows
+    "workflows": [{
+        "name": "daily-triage",
+        "binding": "DAILY_TRIAGE",
+        "class_name": "DailyTriageWorkflow"
+    }],
+    
+    // Daily cron at 8am UTC
+    "triggers": {
+        "crons": ["0 8 * * *"]
+    }
+}
+```
 
-**Total**: ~2 hours
+---
+
+## License
+
+MIT
